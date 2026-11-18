@@ -11,8 +11,10 @@ from utils.quantization import quantize
 @dataclass
 class Fit:
     loss: float
-    # loss가 가장 낮았던 step의 양자화 직전 weight
+    # loss가 가장 낮았던 step의 양자화 직전 weight와 그때의 alpha, theta
     transformed: Tensor
+    alpha: Tensor
+    theta: Tensor | None
 
 
 def optimize(
@@ -49,7 +51,7 @@ def optimize(
         loss = (x @ (dequantized - weight).T).pow(2).mean()
         # step 뒤에 담으면 alpha와 theta만 transformed보다 한 step 앞서므로 갱신 전에 담음
         if best is None or loss.item() < best.loss:
-            best = Fit(loss.item(), transformed.detach().clone())
+            best = Fit(loss.item(), transformed.detach().clone(), alpha.detach().clone(), None if pairs is None else theta.detach().clone())
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
