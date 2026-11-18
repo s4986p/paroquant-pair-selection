@@ -8,7 +8,7 @@ import torch
 
 from utils.dataset import load_pile
 from utils.format import format_duration, format_memory
-from utils.hub import get_pending_jobs, save_rows
+from utils.hub import get_hub_path, get_pending_jobs, save_rows
 from utils.model import capture_linears, load_model
 from utils.pairing import Arm, build_pairs
 from utils.quantization import compute_range, quantize
@@ -68,12 +68,6 @@ def make_jobs(
             hub_path = make_rotation_path(config.model_name, layer, linear_name, config.num_bits, config.group_size, config.num_samples, config.sequence_len, num_rotations, num_steps, config.learning_rate)
             jobs[hub_path, arm, seed] = (layer, linear_name, arm, num_rotations, num_steps, seed)
     return jobs
-
-
-def get_hub_path(
-    job: tuple[str, str, int],
-) -> str:
-    return job[0]
 
 
 def main() -> None:

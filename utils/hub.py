@@ -32,6 +32,13 @@ def save_rows(
     print(f"saved {hub_path}.json")
 
 
+def get_hub_path(
+    job: tuple[str, str, int],
+) -> str:
+    # job은 (hub 경로, arm, seed)
+    return job[0]
+
+
 def get_pending_jobs(
     jobs: list[tuple[str, str, int]],
 ) -> list[tuple[str, str, int]]:

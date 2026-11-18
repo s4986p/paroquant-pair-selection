@@ -36,6 +36,8 @@ ARM_LABELS = {
     "correlation": "correlation",
     "activation_magnitude_difference": "activation\nmagnitude\ndifference",
 }
+# %로 그리는 unit, 나머지는 format_value에서 개수와 소수로 표시
+PERCENT_UNITS = ["%", "%p"]
 # 기준선 회색
 NEUTRAL_COLOR = "#808080"
 BASELINE_WIDTH = 0.8
@@ -112,11 +114,15 @@ def format_value(
     value: float,
     unit: str,
 ) -> str:
-    # 예시) "%" → "53.0%", "%p" → "+2.2%p"
+    # 예시) "%" → "53.0%", "%p" → "+2.2%p", "개" → "2.6개", "" → "0.64"
     # 반올림해 0이 된 음수가 "-0.0"으로 표시되지 않게 0.0을 더함
     if unit == "%p":
         return f"{round(value * 100, 1) + 0.0:+.1f}%p"
-    return f"{value:.1%}"
+    if unit == "%":
+        return f"{value:.1%}"
+    if unit == "개":
+        return f"{value:.1f}개"
+    return f"{value:.2f}"
 
 
 def plot_bars(
@@ -139,7 +145,8 @@ def plot_bars(
     ax.set_xlim(-case_width / 2, (len(cases) - 0.5) * case_width)
     ax.margins(y=VALUE_MARGIN)
     # %p는 눈금 간격이 1%p보다 작을 수 있어 소수 첫째 자리까지
-    ax.yaxis.set_major_formatter(PercentFormatter(1, decimals=1 if unit == "%p" else 0, symbol=unit))
+    if unit in PERCENT_UNITS:
+        ax.yaxis.set_major_formatter(PercentFormatter(1, decimals=1 if unit == "%p" else 0, symbol=unit))
 
 
 def add_arm_legend(
