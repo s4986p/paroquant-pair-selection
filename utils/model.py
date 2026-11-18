@@ -3,7 +3,7 @@ from torch import Tensor
 from torch.nn import Module
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 
-MODEL_ORGS = {"Qwen3-0.6B": "Qwen"}
+MODEL_ORGS = {"Qwen3-0.6B": "Qwen", "Llama-3.1-8B": "meta-llama", "Mistral-7B-v0.3": "mistralai", "gemma-2-9b": "google"}
 
 
 def load_model(
