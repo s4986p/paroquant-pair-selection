@@ -12,7 +12,7 @@ class Config:
     layers: list[int] = field(default_factory=lambda: [10, 20])
     linear_name: str = "self_attn.q_proj"
     # magnitude_similarity는 dummy가 많아 rotation을 덜 한 탓과 구분되지 않으므로 뺌
-    arms: list[str] = field(default_factory=lambda: ["butterfly", "magnitude_difference", "correlation", "activation_magnitude_difference"])
+    arms: list[str] = field(default_factory=lambda: ["butterfly", "magnitude_difference", "correlation", "activation_magnitude_difference", "oracle"])
     num_rotations: list[int] = field(default_factory=lambda: [1, 2, 4, 8])
     num_steps: int = 200
 

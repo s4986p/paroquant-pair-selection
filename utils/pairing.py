@@ -5,8 +5,51 @@ import torch
 from torch import Tensor
 
 # scaling은 rotation 없이 alpha만 학습, random은 pair를 무작위로 고르는 현행 구현, butterfly는 통계를 보지 않는 고정 패턴
-# 나머지는 pair 점수가 큰 순서로 고르는 정렬 arm
-Arm = Literal["scaling", "random", "butterfly", "magnitude_difference", "magnitude_similarity", "correlation", "activation_magnitude_difference"]
+# 나머지는 pair 점수가 큰 순서로 고르는 정렬 arm, oracle은 대신 range를 직접 봄
+Arm = Literal["scaling", "random", "butterfly", "magnitude_difference", "magnitude_similarity", "correlation", "activation_magnitude_difference", "oracle"]
+# oracle이 pair마다 훑는 각도 수, theta는 나중에 다시 학습하므로 순위만 나오면 됨
+NUM_ORACLE_ANGLES = 16
+# pair를 한 번에 다 잡으면 행 × pair × 각도라 메모리 때문에 이만큼씩 나눔
+ORACLE_CHUNK_SIZE = 512
+# rotation은 두 channel만 바꾸므로, 나머지의 최대와 최소는 상위와 하위 3개만 있으면 남음
+NUM_EXTREMES = 3
+
+
+def compute_oracle_score(
+    group: Tensor,
+    first: Tensor,
+    second: Tensor,
+) -> Tensor:
+    # pair를 가장 좋은 각도로 한 번 돌렸을 때 줄어드는 range 제곱의 행 평균
+    angles = torch.arange(NUM_ORACLE_ANGLES, device=group.device) * (2 * torch.pi / NUM_ORACLE_ANGLES)
+    cos, sin = angles.cos(), angles.sin()
+    top_values, top_indices = group.topk(NUM_EXTREMES, dim=1)
+    bottom_values, bottom_indices = group.topk(NUM_EXTREMES, dim=1, largest=False)
+    original_range = (top_values[:, 0] - bottom_values[:, 0]).pow(2)
+
+    scores = []
+    for start in range(0, len(first), ORACLE_CHUNK_SIZE):
+        chunk_first = first[start : start + ORACLE_CHUNK_SIZE]
+        chunk_second = second[start : start + ORACLE_CHUNK_SIZE]
+        # 1. pair가 빼간 자리를 건너뛰고 남는 최대와 최소
+        keeps_top = (top_indices[:, None, :] != chunk_first[None, :, None]) & (top_indices[:, None, :] != chunk_second[None, :, None])
+        keeps_bottom = (bottom_indices[:, None, :] != chunk_first[None, :, None]) & (bottom_indices[:, None, :] != chunk_second[None, :, None])
+        rest_max = torch.where(keeps_top, top_values[:, None, :], -torch.inf).amax(dim=2)
+        rest_min = torch.where(keeps_bottom, bottom_values[:, None, :], torch.inf).amin(dim=2)
+
+        # 2. 각도마다 돌린 두 channel과 나머지로 range를 다시 재고, 가장 많이 줄어든 각도의 값
+        first_columns = group[:, chunk_first]
+        second_columns = group[:, chunk_second]
+        best = None
+        for angle_cos, angle_sin in zip(cos, sin):
+            rotated_first = angle_cos * first_columns - angle_sin * second_columns
+            rotated_second = angle_sin * first_columns + angle_cos * second_columns
+            high = torch.maximum(rest_max, torch.maximum(rotated_first, rotated_second))
+            low = torch.minimum(rest_min, torch.minimum(rotated_first, rotated_second))
+            drop = (original_range[:, None] - (high - low).pow(2)).mean(0)
+            best = drop if best is None else torch.maximum(best, drop)
+        scores.append(best)
+    return torch.cat(scores)
 
 
 def compute_pair_score(
@@ -25,9 +68,11 @@ def compute_pair_score(
         return -(magnitude[first] - magnitude[second]).abs()
     if arm == "correlation":
         return torch.corrcoef(group.T).nan_to_num()[first, second].abs()
-    # activation_magnitude_difference는 weight 크기에 입력 크기를 곱함
-    magnitude = group.abs().mean(0) * group_input_magnitude
-    return (magnitude[first] - magnitude[second]).abs()
+    if arm == "activation_magnitude_difference":
+        # weight 크기에 입력 크기를 곱함
+        magnitude = group.abs().mean(0) * group_input_magnitude
+        return (magnitude[first] - magnitude[second]).abs()
+    return compute_oracle_score(group, first, second)
 
 
 def build_pairs(

@@ -13,7 +13,7 @@ class Config:
     layer: int = 10
     linear_name: str = "self_attn.q_proj"
     # random과 butterfly는 점수가 없고, magnitude_similarity는 dummy가 많아 rotation을 덜 한 탓과 구분되지 않으므로 뺌
-    arms: list[str] = field(default_factory=lambda: ["magnitude_difference", "correlation", "activation_magnitude_difference"])
+    arms: list[str] = field(default_factory=lambda: ["magnitude_difference", "correlation", "activation_magnitude_difference", "oracle"])
     num_rotations: int = 8
     num_steps: int = 200
 

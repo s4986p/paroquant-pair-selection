@@ -17,6 +17,7 @@ ARM_COLORS = {
     "magnitude_similarity": "#b5651d",
     "correlation": "#1baf7a",
     "activation_magnitude_difference": "#d62728",
+    "oracle": "#8e5ccf",
 }
 LINEAR_NAMES = {"self_attn.q_proj": "q_proj", "mlp.gate_proj": "gate_proj"}
 BAR_INCHES = 0.45
@@ -35,6 +36,7 @@ ARM_LABELS = {
     "magnitude_similarity": "magnitude\nsimilarity",
     "correlation": "correlation",
     "activation_magnitude_difference": "activation\nmagnitude\ndifference",
+    "oracle": "oracle",
 }
 # %로 그리는 unit, 나머지는 format_value에서 개수와 소수로 표시
 PERCENT_UNITS = ["%", "%p"]
