@@ -26,18 +26,22 @@ def optimize(
     num_bits: int,
     num_steps: int,
     learning_rate: float,
+    theta_fixed: Tensor | None = None,
 ) -> Fit:
     # paroquant appendix a.2처럼 양자화가 linear 출력에 낸 차이를 adamw로 줄임
-    # pairs가 없으면 rotation 없이 alpha만 학습
+    # pairs가 없으면 rotation 없이 alpha만 학습, theta_fixed가 있으면 앞쪽 rotation의 theta는 고정
     alpha = torch.ones(weight.shape[1], device=weight.device, requires_grad=True)
     parameters = [alpha]
     if pairs is not None:
-        theta = torch.zeros(pairs.shape[:2], device=weight.device, requires_grad=True)
-        parameters.append(theta)
+        num_fixed = 0 if theta_fixed is None else len(theta_fixed)
+        theta_new = torch.zeros(len(pairs) - num_fixed, pairs.shape[1], device=weight.device, requires_grad=True)
+        parameters.append(theta_new)
     optimizer = AdamW(parameters, lr=learning_rate, weight_decay=0)
 
     best = None
     for _ in range(num_steps):
+        if pairs is not None:
+            theta = theta_new if theta_fixed is None else torch.cat([theta_fixed, theta_new])
         # 1. alpha, rotation, 양자화, 역rotation, 역alpha 순, dummy는 theta를 0으로 눌러 rotation에서 뺌
         transformed = weight * alpha
         if pairs is not None:

@@ -28,6 +28,13 @@ PANEL_MARGIN = 0.9
 MIN_FIGURE_WIDTH = 9.0
 # 막대 위 값이 그림 밖으로 잘리지 않게 y축 위 여백 비율
 VALUE_MARGIN = 0.15
+# rotation마다 다시 고르기 plot의 (schedule, arm) 색, all은 arm 색, sequential_rescore는 더 진한 색
+SCHEDULE_COLORS = {
+    ("all", "random"): ARM_COLORS["random"],
+    ("all", "oracle"): ARM_COLORS["oracle"],
+    ("sequential_rescore", "random"): "#5b5a56",
+    ("sequential_rescore", "oracle"): "#5b2a9e",
+}
 # 이름이 길어 눈금에서는 _ 자리에서 줄을 바꿈
 ARM_LABELS = {
     "random": "random",

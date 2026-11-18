@@ -82,10 +82,15 @@ def build_pairs(
     num_rotations: int,
     arm: Arm,
     seed: int,
+    used_pairs_by_group: dict[int, set[tuple[int, int]]] | None = None,
+    rotation_offset: int = 0,
 ) -> tuple[Tensor, Tensor]:
     # rotation마다 group 안 channel을 모두 pair로 묶음, pair는 group 안에서만 지음
+    # rotation을 하나씩 나눠 고를 때는 used_pairs_by_group으로 이미 쓴 pair를, rotation_offset으로 butterfly의 몇 번째 rotation인지를 이어 받음
     # 예시) group_size 4 → rotation마다 pair 2개, 예) [(0, 2), (1, 3)]
     generator = random.Random(seed)
+    if used_pairs_by_group is None:
+        used_pairs_by_group = {}
     num_columns = weight.shape[1]
     pairs = torch.empty(num_rotations, num_columns // 2, 2, dtype=torch.long)
     is_dummy = torch.zeros(num_rotations, num_columns // 2, dtype=torch.bool)
@@ -98,7 +103,7 @@ def build_pairs(
         # 예시) stride 1 → (0, 1), (2, 3), ...
         if arm == "butterfly":
             for rotation_index in range(num_rotations):
-                stride = 1 << (rotation_index % num_strides)
+                stride = 1 << ((rotation_offset + rotation_index) % num_strides)
                 picks = [(channel, channel ^ stride) for channel in range(group_size) if channel < channel ^ stride]
                 pairs[rotation_index, pair_offset : pair_offset + len(picks)] = channel_offset + torch.tensor(picks)
             continue
@@ -115,7 +120,7 @@ def build_pairs(
 
         # 3. 앞에서부터 고름, 한 rotation 안에서는 channel을 한 번씩만, rotation끼리는 같은 pair를 다시 쓰지 않음
         # 짝을 못 찾은 channel은 자리만 채우고 rotation하지 않는 dummy
-        used_pairs = set()
+        used_pairs = used_pairs_by_group.setdefault(channel_offset // group_size, set())
         for rotation_index in range(num_rotations):
             used_channels = set()
             picks = []
